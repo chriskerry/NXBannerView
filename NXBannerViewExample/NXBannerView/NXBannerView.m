@@ -1,67 +1,108 @@
 //
 //  NXBannerView.m
-//  LoveFit
+//  NXBannerView
 //
-//  Created by niexin on 4/13/15.
+//  Created by ChrisK on 4/13/15.
 //  Copyright (c) 2015 niexin. All rights reserved.
 //
 
 #import "NXBannerView.h"
+#import "UIImageView+WebCache.h"
 @interface NXBannerView()
-@property (nonatomic,strong) NSMutableArray *imageViewArray;
-@property (nonatomic,strong) NSTimer        *currentTimer;
-@property (nonatomic,assign) float          nowOffsetx;
-@property (nonatomic,assign) BOOL firstTime;
+@property (nonatomic,strong) NSTimer *currentTimer;
+/**
+ *  现在scrollView的偏移量
+ */
+@property (nonatomic,assign) float nowOffsetx;
+
+/**
+ *  该view上面的scrollView
+ */
+@property (nonatomic, strong) UIScrollView *scrollView;
+
+/**
+ *  图片的个数
+ */
+@property (nonatomic, assign) NSInteger imageCount;
+
+/**
+ *  图片URL数组
+ */
+@property (nonatomic, strong, nonnull) NSArray<NSString *> *imageURLArray;
 @end
 
 @implementation NXBannerView
 
--(instancetype)initWithFrame:(CGRect)frame
+- (instancetype)initWithFrame:(CGRect)frame
 {
     self = [super initWithFrame:frame];
     if (self) {
         self.frame = frame;
-        _imageViewArray = [NSMutableArray array];
-        _firstTime = YES;
+        _eachDuration = 3.0f;
     }
     return self;
 }
 
-- (instancetype)init
+- (instancetype)initWithFrame:(CGRect)frame imageURLArray:(nonnull NSArray<NSString *> *)imageURLArray
 {
-    self = [super init];
-    if (self) {
-        _imageViewArray = [NSMutableArray array];
+    if (self = [self initWithFrame:frame]) {
+        
+        _imageURLArray = imageURLArray;
+        if (_imageURLArray.count == 0) {
+            return self;
+        }
+        _imageCount = _imageURLArray.count;
+        
+        [self initImageViews];
+        
+        [self initTimer];
     }
     return self;
 }
 
--(void)setImageCount:(NSInteger)imageCount
+- (UIScrollView *)scrollView
 {
-    _imageCount = imageCount;
-    if (_imageCount == 0) {
-        return;
+    if (!_scrollView) {
+        _scrollView = [[UIScrollView alloc] initWithFrame:CGRectMake(0, 0, self.frame.size.width, self.frame.size.height)];
+        _scrollView.contentSize = CGSizeMake(self.frame.size.width * (_imageCount+2), self.scrollView.frame.size.height);
+        _scrollView.bounces = NO;
+        _scrollView.showsHorizontalScrollIndicator = NO;
+        _scrollView.delegate = self;
+        _scrollView.pagingEnabled = YES;
+        _scrollView.contentOffset = CGPointMake(self.frame.size.width, 0);
+        [self addSubview:_scrollView];
     }
-    self.scrollView = [[UIScrollView alloc] initWithFrame:CGRectMake(0, 0, self.frame.size.width, self.frame.size.height)];
-    _scrollView.contentSize = CGSizeMake(self.frame.size.width * (_imageCount+2), self.scrollView.frame.size.height);
-    _scrollView.bounces = NO;
-    _scrollView.showsHorizontalScrollIndicator = NO;
-    _scrollView.delegate = self;
-    _scrollView.pagingEnabled = YES;
-    [self addSubview:_scrollView];
-    
+    return _scrollView;
+}
+
+- (void)initImageViews
+{
     for (int i = 0; i<_imageCount+2; i++) {
         UIImageView *imageV = [[UIImageView alloc] initWithFrame:CGRectMake(i*self.frame.size.width, 0, self.frame.size.width, self.frame.size.height)];
         imageV.userInteractionEnabled = YES;
         imageV.tag = 1000+i;
         UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(tapImage:)];
         [imageV addGestureRecognizer:tap];
-        [_scrollView addSubview:imageV];
-        [_imageViewArray addObject:imageV];
+        [self.scrollView addSubview:imageV];
+        
+        NSInteger index = 0;
+        if (i == 0) {
+            index = _imageCount-1;
+        }else if (i == _imageCount+1){
+            index = 0;
+        }else{
+            index = i-1;
+        }
+        [imageV sd_setImageWithURL:[NSURL URLWithString:[_imageURLArray objectAtIndex:index]]];
     }
-    _scrollView.contentOffset = CGPointMake(self.frame.size.width, 0);
-    _nowOffsetx = self.frame.size.width;
     
+    _nowOffsetx = self.frame.size.width;
+}
+
+- (void)initTimer
+{
+    _currentTimer = [NSTimer timerWithTimeInterval:_eachDuration target:self selector:@selector(doTheSwitchAnimation) userInfo:nil repeats:YES];
+    [[NSRunLoop currentRunLoop] addTimer:_currentTimer forMode:NSRunLoopCommonModes];
 }
 
 - (void)tapImage:(UIGestureRecognizer *)tap
@@ -72,46 +113,22 @@
     if (self.delegate && [self.delegate respondsToSelector:@selector(didTapImageViewAtIndex:)]) {
         [self.delegate didTapImageViewAtIndex:tap.view.tag - 1001];
     }
-    
 }
-
 
 -(void)setEachDuration:(float)eachDuration
 {
     _eachDuration = eachDuration;
-    _currentTimer = [NSTimer scheduledTimerWithTimeInterval:_eachDuration target:self selector:@selector(doTheSwitchAnimation) userInfo:nil repeats:YES];
-    [_currentTimer fire];
+    
+    [self initTimer];
 }
 
 - (void)doTheSwitchAnimation
 {
-    if (_firstTime) {
-        _firstTime = NO;
-        return;
-    }
     [_scrollView setContentOffset:CGPointMake(_nowOffsetx + self.frame.size.width, 0) animated:YES];
 }
 
 
-- (void)beginSetImages
-{
-    if (self.delegate && _imageCount && [self.delegate respondsToSelector:@selector(setImageView:withIndex:)]) {
-        for (int i = 0; i<_imageCount+2; i++) {
-            NSInteger index = 0;
-            if (i == 0) {
-                index = _imageCount-1;
-            }else if (i == _imageCount+1){
-                index = 0;
-            }else{
-                index = i-1;
-            }
-            [self.delegate setImageView:[_imageViewArray objectAtIndex:i] withIndex:index];
-        }
-    }
-}
-
-
-
+#pragma mark - UIScrollViewDelegate
 - (void)scrollViewDidEndScrollingAnimation:(UIScrollView *)scrollView
 {
     _nowOffsetx = scrollView.contentOffset.x;
@@ -140,18 +157,14 @@
     }
 }
 
-
 - (void)scrollViewWillBeginDragging:(UIScrollView *)scrollView
 {
     [_currentTimer invalidate];
 }
 
-
 - (void)scrollViewDidEndDragging:(UIScrollView *)scrollView willDecelerate:(BOOL)decelerate
 {
-    _currentTimer = [NSTimer scheduledTimerWithTimeInterval:_eachDuration target:self selector:@selector(doTheSwitchAnimation) userInfo:nil repeats:YES];
-    _firstTime = YES;
-    [_currentTimer fire];
+    [self initTimer];
 }
 
 
