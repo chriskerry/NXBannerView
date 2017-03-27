@@ -27,6 +27,12 @@
 @property (nonatomic, weak) __nullable id <NXBannerViewDelegate> delegate;
 
 
+/**
+
+ @param frame 该view的frame
+ @param imageURLArray 图片imageUrl的数组
+ @return 返回该view
+ */
 - (nonnull instancetype)initWithFrame:(CGRect)frame imageURLArray:(nonnull NSArray<NSString *> *)imageURLArray;
 
 /** 
