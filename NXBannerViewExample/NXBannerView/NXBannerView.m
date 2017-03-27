@@ -101,10 +101,15 @@
 
 - (void)initTimer
 {
-    _currentTimer = [NSTimer timerWithTimeInterval:_eachDuration target:self selector:@selector(doTheSwitchAnimation) userInfo:nil repeats:YES];
-    [[NSRunLoop currentRunLoop] addTimer:_currentTimer forMode:NSRunLoopCommonModes];
+    if (!_currentTimer) {
+        _currentTimer = [NSTimer timerWithTimeInterval:_eachDuration target:self selector:@selector(doTheSwitchAnimation) userInfo:nil repeats:YES];
+        [[NSRunLoop currentRunLoop] addTimer:_currentTimer forMode:NSRunLoopCommonModes];
+    }
 }
 
+/**
+ 点击某张图片后的回调
+ */
 - (void)tapImage:(UIGestureRecognizer *)tap
 {
     if (tap.view.tag - 1000 == 0 || tap.view.tag - 1000 == _imageCount+1) {
@@ -157,6 +162,9 @@
     }
 }
 
+/**
+ 当手动滑动图片时，关闭计时器
+ */
 - (void)scrollViewWillBeginDragging:(UIScrollView *)scrollView
 {
     [_currentTimer invalidate];
