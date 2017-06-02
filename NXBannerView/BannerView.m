@@ -165,6 +165,21 @@
     if (!_timer) {
         _timer = [NSTimer scheduledTimerWithTimeInterval:_eachDuration target:self selector:@selector(autoPlayImageView:) userInfo:nil repeats:YES];
     }
+    
+    if (!decelerate) {
+        CGFloat x = scrollView.contentOffset.x / _scrollView.bounds.size.width;
+        if (x >1) {
+            //左滑
+            _currentIndex = (_currentIndex + 1)%_images.count;
+        }else{
+            //右滑
+            _currentIndex =(_currentIndex - 1 + _images.count)%_images.count;
+        }
+        
+        [self refreshContent];
+        _scrollView.contentOffset = CGPointMake(_scrollView.bounds.size.width, 0);
+    }
+    
 }
 
 -(void)scrollViewWillBeginDragging:(UIScrollView *)scrollView
